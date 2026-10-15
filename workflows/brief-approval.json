@@ -1,0 +1,374 @@
+{
+  "name": "AIA Brief Approval v0",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "url"
+            },
+            {
+              "name": "team"
+            },
+            {
+              "name": "urgency",
+              "type": "number"
+            },
+            {
+              "name": "routing_reason"
+            },
+            {
+              "name": "brief_text"
+            }
+          ]
+        }
+      },
+      "id": "fb987830-c4f6-451a-9628-02b65dcc3894",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "sendAndWait",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "your-review-channel"
+        },
+        "message": "=*Brief for approval*\n*Team:* {{ $('When Executed by Another Workflow').item.json.team }}\n*Urgency:* {{ $('When Executed by Another Workflow').item.json.urgency }}\n*Routing reason:* {{ $('When Executed by Another Workflow').item.json.routing_reason }}\n\n*Draft brief:*\n{{ $('When Executed by Another Workflow').item.json.brief_text }}\n\n*Source:* {{ $('When Executed by Another Workflow').item.json.url }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "disapproveLabel": "Reject"
+          }
+        },
+        "options": {
+          "limitWaitTime": {
+            "values": {
+              "resumeAmount": 48
+            }
+          },
+          "appendAttribution": false
+        }
+      },
+      "id": "5f204b0c-ce1a-4002-84ab-05c50b876b07",
+      "name": "Request Approval",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1",
+              "name": "decision",
+              "type": "string",
+              "value": "={{ $json.data && $json.data.approved === true ? \"approved\" : ($json.data && $json.data.approved === false ? \"rejected\" : \"expired\") }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "de94341b-29bd-4413-bb3a-0dd932f0b1dd",
+      "name": "Set Decision",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_BRIEF_LOG_TABLE_ID",
+          "cachedResultName": "brief_log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $now.toISO() }}",
+            "url": "={{ $('When Executed by Another Workflow').item.json.url }}",
+            "team": "={{ $('When Executed by Another Workflow').item.json.team }}",
+            "urgency": "={{ $('When Executed by Another Workflow').item.json.urgency }}",
+            "routing_reason": "={{ $('When Executed by Another Workflow').item.json.routing_reason }}",
+            "brief_text": "={{ $('When Executed by Another Workflow').item.json.brief_text }}",
+            "decision": "={{ $json.decision }}"
+          },
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "team",
+              "displayName": "team",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "urgency",
+              "displayName": "urgency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "routing_reason",
+              "displayName": "routing_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brief_text",
+              "displayName": "brief_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "decision",
+              "displayName": "decision",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "214871ce-2787-4d36-98d4-c559dc6223ba",
+      "name": "Log Brief",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "appr",
+              "leftValue": "={{ $('Set Decision').item.json.decision }}",
+              "rightValue": "approved",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0b6e7c5a-610d-41ce-8041-8787f32fad01",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "your-review-channel"
+        },
+        "text": "=*[APPROVED – would go to {{ $('When Executed by Another Workflow').item.json.team }}]*\n\n{{ $('When Executed by Another Workflow').item.json.brief_text }}\n\n*Source:* {{ $('When Executed by Another Workflow').item.json.url }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "6c3aee9b-2047-47d2-b256-2f8be933c8ca",
+      "name": "Post Approved Brief",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        1120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "<__PLACEHOLDER_VALUE__Team owner email (future delivery)__>",
+        "subject": "=Signal brief for {{ $('When Executed by Another Workflow').item.json.team }}",
+        "emailType": "text",
+        "message": "={{ $('When Executed by Another Workflow').item.json.brief_text }}",
+        "options": {}
+      },
+      "id": "1903415d-f092-49be-9b96-961d55467f1c",
+      "name": "Deliver to Team (future)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        0
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "## Approval\nPosts each draft to the review channel with Approve / Reject. Waits up to 48 hours; no response = expired.",
+        "height": 224,
+        "width": 384,
+        "color": 7
+      },
+      "id": "cfde0d93-b084-440f-ad1b-29c7fe0ce197",
+      "name": "Sticky Note cfde0d93",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        192,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Delivery and log\nEvery decision (approved / rejected / expired) is logged to brief_log. Approved briefs are reposted to the review channel; Gmail delivery is disabled for now.",
+        "height": 224,
+        "width": 832,
+        "color": 7
+      },
+      "id": "c2693e2f-4891-47b5-931f-c07f39b8b1ed",
+      "name": "Sticky Note c2693e2f",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        640,
+        -96
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Request Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Approval": {
+      "main": [
+        [
+          {
+            "node": "Set Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Decision": {
+      "main": [
+        [
+          {
+            "node": "Log Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Brief": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved?": {
+      "main": [
+        [
+          {
+            "node": "Post Approved Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Approved Brief": {
+      "main": [
+        [
+          {
+            "node": "Deliver to Team (future)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timezone": "Europe/Berlin",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "nodeGroups": [],
+  "pinData": {}
+}

@@ -1,0 +1,1452 @@
+{
+  "name": "AIA Signal Pipeline v0",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7,
+              "triggerAtMinute": 45
+            }
+          ]
+        }
+      },
+      "id": "3861c778-96a8-41b0-bca5-ff6c6af1d090",
+      "name": "Daily at 07:45",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://gcaptain.com/feed/",
+        "options": {}
+      },
+      "id": "10f032cb-4bbe-4e79-a4de-3bab3c3318d7",
+      "name": "RSS Source 1",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://theloadstar.com/feed/",
+        "options": {}
+      },
+      "id": "0d885bd3-c252-455b-a2b7-0330c5f45e08",
+      "name": "RSS Source 2",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://splash247.com/feed/",
+        "options": {}
+      },
+      "id": "05c45b01-987a-4a40-b4fc-136618638a35",
+      "name": "RSS Source 3",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Sources\nDaily at 07:45 (Berlin): read 3 RSS feeds, merge, normalise to title/url/source/published_at/summary.",
+        "height": 608,
+        "width": 656,
+        "color": 7
+      },
+      "id": "c9305c4c-7c66-4d88-af18-32d15a01f334",
+      "name": "Note Sources",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        192,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Dedupe\nDrops any URL already processed in a previous run.",
+        "height": 224,
+        "width": 160,
+        "color": 7
+      },
+      "id": "4e45bd53-cf6f-408f-83a3-9e82145836c3",
+      "name": "Note Dedupe",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        912,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Classifier\nLLM tags topics, regions, urgency, relevance. Only relevant signals continue.",
+        "height": 224,
+        "width": 736,
+        "color": 7
+      },
+      "id": "7c5b675e-c975-4072-9e06-1a4a0f76756f",
+      "name": "Note Classifier",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        992,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Router\nDeterministic match against org_map (topic + region + min urgency). Unmatched -> unrouted_signals.",
+        "height": 368,
+        "width": 896,
+        "color": 7
+      },
+      "id": "3470f3ff-e4fe-4c5a-ad58-5f8d01d6df19",
+      "name": "Note Router",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Brief writer\nLLM drafts an 80-120 word team-specific brief from source facts only.",
+        "height": 224,
+        "width": 288,
+        "color": 7
+      },
+      "id": "785b8911-0c2d-4fe9-a216-a71ba38ab140",
+      "name": "Note Brief",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2192,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Approval\nEach brief is handed to the \"AIA Brief Approval v0\" sub-workflow (one run per brief, not waited on). It asks for Approve / Reject in the review channel, waits up to 48h, logs to brief_log and reposts approved briefs.",
+        "height": 224,
+        "width": 160,
+        "color": 7
+      },
+      "id": "e460722a-b801-4f2a-8a9e-226a3ac067e0",
+      "name": "Note Approval",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2048,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "id": "7981cb50-12e1-4813-9356-71ca11972cba",
+      "name": "Merge Feeds",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        496,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n1",
+              "name": "title",
+              "type": "string",
+              "value": "={{ $json.title || \"\" }}"
+            },
+            {
+              "id": "n2",
+              "name": "url",
+              "type": "string",
+              "value": "={{ $json.link || $json.guid || \"\" }}"
+            },
+            {
+              "id": "n3",
+              "name": "source",
+              "type": "string",
+              "value": "={{ $json.link ? $json.link.extractDomain() : \"\" }}"
+            },
+            {
+              "id": "n4",
+              "name": "published_at",
+              "type": "string",
+              "value": "={{ $json.isoDate || $json.pubDate || \"\" }}"
+            },
+            {
+              "id": "n5",
+              "name": "summary",
+              "type": "string",
+              "value": "={{ $json.contentSnippet || $json.content || $json.summary || \"\" }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "70707445-c129-4913-b1cb-abb1ecf92575",
+      "name": "Normalise Item",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        720,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "dedupeValue": "={{ $json.url }}",
+        "options": {}
+      },
+      "id": "4b53c501-1195-48b5-8058-cb67167f6bb7",
+      "name": "Dedupe by URL",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        944,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Classify this news item.\n\nTitle: {{ $json.title }}\nSource: {{ $json.source }}\nPublished: {{ $json.published_at }}\nURL: {{ $json.url }}\n\nArticle text:\n{{ $json.summary }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You classify news items for business-impact monitoring. Use only the allowed values. If no topic fits, return topics ['none'] and relevant false. Never infer facts that are not in the article. one_line_summary must be at most 25 words and based only on the article text. urgency: 1 = background, 2 = act this month, 3 = act this week.\n\nRegions describe where business operations or trade lanes are affected, not where a story is published. Tag every region where the event happens or whose trade lanes and markets it directly affects. Use the corridors for shipping chokepoints: middle_east_gulf for the Persian Gulf, Strait of Hormuz and Gulf of Oman; red_sea_suez for the Red Sea, Bab el-Mandeb and Suez Canal. Use global only when the effect is genuinely worldwide (for example a worldwide freight index or a global regulation). Never use global as a default or a fallback."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "3aa52342-a3ad-4553-bd59-a6626f0673c6",
+      "name": "Classify Signal",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1024,
+        320
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-haiku-5-5"
+        },
+        "options": {}
+      },
+      "id": "be188eed-c49c-44cb-8782-3f47f5ecf3cd",
+      "name": "Anthropic Model (Classifier)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        1040,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"topics\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\",\n        \"enum\": [\"tariffs_trade\", \"customs_rules_of_origin\", \"sanctions_export_controls\", \"carbon_cbam\", \"shipping_disruption\", \"labour_strikes\", \"fx_currency\", \"compliance_regulation\", \"eu_india_relations\", \"none\"]\n      }\n    },\n    \"regions\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\",\n        \"enum\": [\"UK\", \"EU\", \"DE\", \"IN\", \"middle_east_gulf\", \"red_sea_suez\", \"asia_pacific\", \"americas\", \"africa\", \"global\"]\n      }\n    },\n    \"urgency\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 3, \"description\": \"1 = background, 2 = act this month, 3 = act this week\"},\n    \"relevant\": {\"type\": \"boolean\"},\n    \"one_line_summary\": {\"type\": \"string\", \"description\": \"Max 25 words, based only on the article text\"}\n  },\n  \"required\": [\"topics\", \"regions\", \"urgency\", \"relevant\", \"one_line_summary\"]\n}"
+      },
+      "id": "7764ca5f-174e-41df-bb20-dd848081bffd",
+      "name": "Classification Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1168,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "title",
+              "type": "string",
+              "value": "={{ $(\"Dedupe by URL\").item.json.title }}"
+            },
+            {
+              "id": "s2",
+              "name": "url",
+              "type": "string",
+              "value": "={{ $(\"Dedupe by URL\").item.json.url }}"
+            },
+            {
+              "id": "s3",
+              "name": "source",
+              "type": "string",
+              "value": "={{ $(\"Dedupe by URL\").item.json.source }}"
+            },
+            {
+              "id": "s4",
+              "name": "published_at",
+              "type": "string",
+              "value": "={{ $(\"Dedupe by URL\").item.json.published_at }}"
+            },
+            {
+              "id": "s5",
+              "name": "summary",
+              "type": "string",
+              "value": "={{ $(\"Dedupe by URL\").item.json.summary }}"
+            },
+            {
+              "id": "s6",
+              "name": "topics",
+              "type": "array",
+              "value": "={{ $json.output ? $json.output.topics : ['none'] }}"
+            },
+            {
+              "id": "s7",
+              "name": "regions",
+              "type": "array",
+              "value": "={{ $json.output ? $json.output.regions : [] }}"
+            },
+            {
+              "id": "s8",
+              "name": "urgency",
+              "type": "number",
+              "value": "={{ $json.output ? $json.output.urgency : 1 }}"
+            },
+            {
+              "id": "s9",
+              "name": "relevant",
+              "type": "boolean",
+              "value": "={{ $json.output ? $json.output.relevant : false }}"
+            },
+            {
+              "id": "s10",
+              "name": "one_line_summary",
+              "type": "string",
+              "value": "={{ $json.output ? $json.output.one_line_summary : '' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8cb3a5b6-f6b0-4ec4-b50b-87a05183349a",
+      "name": "Build Signal",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1376,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "rel",
+              "leftValue": "={{ $json.relevant }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f4fdd2a5-4b82-4620-a111-e0c2b8585c8b",
+      "name": "Is Relevant?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1600,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_ORG_MAP_TABLE_ID",
+          "cachedResultName": "org_map"
+        },
+        "returnAll": true
+      },
+      "id": "5b2a53c6-4691-46c3-8b58-6b0b7d81dc7e",
+      "name": "Read org_map",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1552,
+        576
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const signals = $('Not a Repeat?').all().map(i => i.json);\nconst rows = $input.all().map(i => i.json).filter(r => r && r.team);\n\nconst splitList = (s) => String(s || '').split(',').map(x => x.trim()).filter(Boolean);\nconst lower = (arr) => arr.map(x => String(x).trim().toLowerCase());\n\nconst out = [];\nfor (const s of signals) {\n  const sTopics = Array.isArray(s.topics) ? s.topics.map(String) : splitList(s.topics);\n  const sRegions = Array.isArray(s.regions) ? s.regions.map(String) : splitList(s.regions);\n  const urgency = Number(s.urgency) || 0;\n  const merged = Number(s.merged_count) || 0;\n  const mergedNote = merged > 0 ? ' (' + merged + ' similar report' + (merged > 1 ? 's' : '') + ' merged into this brief)' : '';\n  const storyNote = s.story_status === 'update' ? ' | UPDATE to a story first briefed ' + s.first_seen : '';\n  let matched = 0;\n\n  for (const r of rows) {\n    const rTopics = lower(splitList(r.topics));\n    const rRegions = lower(splitList(r.regions));\n    const minUrgency = (r.min_urgency === null || r.min_urgency === undefined || r.min_urgency === '') ? 1 : Number(r.min_urgency);\n    const topicHits = sTopics.filter(t => rTopics.includes(t.toLowerCase()));\n    const regionHits = sRegions.filter(g => rRegions.includes(g.toLowerCase()));\n\n    if (topicHits.length > 0 && regionHits.length > 0 && urgency >= minUrgency) {\n      matched++;\n      const reason = 'Matched topic ' + topicHits.join(', ') + ' and region ' + regionHits.join(', ') + '; urgency ' + urgency + ' meets threshold ' + minUrgency + mergedNote + storyNote;\n      out.push({ json: {\n        ...s,\n        routed: true,\n        team: r.team,\n        owner: r.owner || '',\n        channel: r.channel || '',\n        exposure_note: r.exposure_note || '',\n        min_urgency: minUrgency,\n        routing_reason: reason,\n      } });\n    }\n  }\n\n  if (matched === 0) {\n    out.push({ json: {\n      ...s,\n      routed: false,\n      team: '',\n      owner: '',\n      channel: '',\n      exposure_note: '',\n      min_urgency: null,\n      routing_reason: 'No org_map row matched topics [' + sTopics.join(', ') + '], regions [' + sRegions.join(', ') + '] at urgency ' + urgency + mergedNote + storyNote,\n    } });\n  }\n}\nreturn out;"
+      },
+      "id": "dc218e9f-c4b0-4836-a142-9c4b5b659fdb",
+      "name": "Route to Teams",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1776,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "routed",
+              "leftValue": "={{ $json.routed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c6d959ff-063c-4567-ab62-361d84b43862",
+      "name": "Matched a Team?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2000,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Team: {{ $json.team }}\nExposure note: {{ $json.exposure_note }}\nRouting reason: {{ $json.routing_reason }}\nStory status: {{ $json.story_status }}\n{{ $json.story_status === 'update' ? 'Earlier coverage of this story in the last 7 days:\\n' + $json.previous_summary + '\\nNew facts flagged by the comparison step: ' + $json.what_is_new + '\\n' : '' }}\nTitle: {{ $json.title }}\nURL: {{ $json.url }}\nOne-line summary: {{ $json.one_line_summary }}\n\nSource text:\n{{ $json.summary }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Write a brief of 80 to 120 words for the named team. It will be posted in Slack, so format for Slack: use single asterisks for bold labels (*like this*), never double asterisks, no # headings, no markdown links.\n\nUse only facts present in the source text. Structure, one short paragraph each:\n*What happened:* 1 sentence.\n*Why it reaches you:* use the exposure note in plain words. Do not repeat the routing reason.\n*What it could change (assessment, not fact):* 1 to 2 sentences.\n*Check next:* 1 action.\n\nIf Story status is update, the team was already briefed on this story in the last 7 days. Use this structure instead:\n*Update:* only what is new, 1 to 2 sentences, taken from the source text. Ignore any flagged new fact the source text does not support.\n*Last week:* 1 sentence recap, drawn only from the earlier coverage lines.\n*What it could change (assessment, not fact):* 1 sentence.\n*Check next:* 1 action.\n\nDo not include the source link; it is added separately. Do not add a title line. If the source does not support a claim, leave it out."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "07111ec3-7f08-4abc-bb1b-50eb2a43bc04",
+      "name": "Write Team Brief",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        2224,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-sonnet-5-5"
+        },
+        "options": {}
+      },
+      "id": "655f866c-7ef5-4504-acb8-72fc24cafa5e",
+      "name": "Anthropic Model (Brief Writer)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        2304,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "REPLACE_WITH_BRIEF_APPROVAL_WORKFLOW_ID",
+          "cachedResultName": "AIA Brief Approval v0"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $('Route to Teams').item.json.url }}",
+            "team": "={{ $('Route to Teams').item.json.team }}",
+            "urgency": "={{ $('Route to Teams').item.json.urgency }}",
+            "routing_reason": "={{ $('Route to Teams').item.json.routing_reason }}",
+            "brief_text": "={{ $json.text }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "team",
+              "displayName": "team",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "urgency",
+              "displayName": "urgency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "routing_reason",
+              "displayName": "routing_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "brief_text",
+              "displayName": "brief_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "b600e694-5f1e-46fc-b59a-35e491292cf5",
+      "name": "Send for Approval",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        2032,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_UNROUTED_SIGNALS_TABLE_ID",
+          "cachedResultName": "unrouted_signals"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $now.toISO() }}",
+            "title": "={{ $json.title }}",
+            "url": "={{ $json.url }}",
+            "source": "={{ $json.source }}",
+            "topics": "={{ ($json.topics || []).join(\",\") }}",
+            "regions": "={{ ($json.regions || []).join(\",\") }}",
+            "urgency": "={{ $json.urgency }}",
+            "one_line_summary": "={{ $json.one_line_summary }}"
+          },
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "topics",
+              "displayName": "topics",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "regions",
+              "displayName": "regions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "urgency",
+              "displayName": "urgency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "one_line_summary",
+              "displayName": "one_line_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c730c788-4fa6-4573-9dd0-916fb6091d1e",
+      "name": "Log Unrouted Signal",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2288,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all().map(i => i.json);\nconst list = items.map((s, i) => `[${i}] ${s.title} | ${s.one_line_summary}`).join('\\n');\nreturn [{ json: { count: items.length, list } }];"
+      },
+      "id": "c9190183-af49-42cd-9290-4177434e3019",
+      "name": "Bundle Signals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=There are {{ $json.count }} news items, numbered from 0:\n\n{{ $json.list }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You group news items so a business team is not sent the same story twice in one batch. Put items in the same group when a second brief would not change what the team does: the same incident, or new developments in the same ongoing situation affecting the same place or trade route (for example several reports on attacks in the same strait). Items about different places, routes or decisions stay in separate groups. Every index must appear in exactly one group, including items that stand alone. For each group, set lead to the index of the item with the most concrete facts. Use only indices from the list."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "8957baae-675c-425b-a4da-70d9ee4b5195",
+      "name": "Group Same Events",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1824,
+        800
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-haiku-5-5"
+        },
+        "options": {}
+      },
+      "id": "4a5ca6ff-4fae-4c16-b994-a8a9cbbc2b3c",
+      "name": "Anthropic Model (Grouping)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        1824,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"groups\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"lead\": {\"type\": \"integer\"},\n          \"members\": {\"type\": \"array\", \"items\": {\"type\": \"integer\"}}\n        },\n        \"required\": [\"lead\", \"members\"]\n      }\n    }\n  },\n  \"required\": [\"groups\"]\n}"
+      },
+      "id": "659eb222-f712-4cbd-8495-4a1a62f86779",
+      "name": "Grouping Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1952,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const signals = $('Is Relevant?').all().map(i => i.json);\nlet groups = [];\ntry { groups = $input.first().json.output.groups || []; } catch (e) { groups = []; }\n\nconst used = new Set();\nconst out = [];\nconst uniq = (arr) => [...new Set(arr)];\nconst urg = (n) => Number(signals[n].urgency) || 0;\n\nfor (const g of groups) {\n  const members = uniq((g.members || []).map(Number))\n    .filter(n => Number.isInteger(n) && n >= 0 && n < signals.length && !used.has(n));\n  if (members.length === 0) continue;\n  // Lead = most urgent report in the group; the model's pick only breaks ties\n  const maxUrg = Math.max(...members.map(urg));\n  const top = members.filter(n => urg(n) === maxUrg);\n  const modelLead = Number(g.lead);\n  const lead = top.includes(modelLead) ? modelLead : top[0];\n  members.forEach(n => used.add(n));\n  const others = members.filter(n => n !== lead).map(n => signals[n]);\n  out.push({ json: {\n    ...signals[lead],\n    topics: uniq(members.flatMap(n => signals[n].topics || [])).filter(t => t !== 'none'),\n    regions: uniq(members.flatMap(n => signals[n].regions || [])),\n    urgency: maxUrg,\n    merged_count: others.length,\n    also_reported: others.map(o => o.url),\n  } });\n}\n\n// Fail open: anything the grouping step missed is still sent on its own\nsignals.forEach((s, i) => {\n  if (!used.has(i)) out.push({ json: { ...s, merged_count: 0, also_reported: [] } });\n});\n\nreturn out;"
+      },
+      "id": "e792f00c-aaed-474d-a565-bc0bd45d2d9d",
+      "name": "Keep One Per Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2048,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "story_log",
+          "mode": "id",
+          "value": "REPLACE_WITH_STORY_LOG_TABLE_ID"
+        },
+        "returnAll": true
+      },
+      "id": "6922125c-493b-4e64-a2c5-1cf02cf091f6",
+      "name": "Read Story Log",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2272,
+        800
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const events = $('Keep One Per Event').all().map(i => i.json);\nconst cutoff = Date.now() - 7 * 24 * 3600 * 1000;\nconst rows = $input.all().map(i => i.json)\n  .filter(r => r && r.story_id && new Date(r.seen_at).getTime() >= cutoff);\n\nconst byStory = {};\nfor (const r of rows) (byStory[r.story_id] = byStory[r.story_id] || []).push(r);\n\nconst stories = Object.entries(byStory).map(([id, rs]) => {\n  rs.sort((a, b) => new Date(a.seen_at) - new Date(b.seen_at));\n  const lines = rs.slice(-4).map(r => String(r.seen_at).slice(0, 10) + ': ' + (r.what_is_new || r.summary));\n  return { id, title: rs[rs.length - 1].title, lines };\n});\n\nconst eventList = events.map((e, i) => `[${i}] ${e.title} | ${e.one_line_summary}`).join('\\n');\nconst storyList = stories.length\n  ? stories.map(s => `{${s.id}} ${s.title}\\n  ` + s.lines.join('\\n  ')).join('\\n')\n  : '(none)';\n\nreturn [{ json: { event_count: events.length, story_count: stories.length, eventList, storyList } }];"
+      },
+      "id": "35abbd69-c832-4a82-9ab9-a082af7e5270",
+      "name": "Bundle With History",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2496,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Today's events ({{ $json.event_count }}), numbered from 0:\n{{ $json.eventList }}\n\nStories the team was already told about in the last 7 days ({{ $json.story_count }}), with ids in braces:\n{{ $json.storyList }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You compare today's news events with stories a business team was already told about in the last 7 days. Return exactly one decision for every event index:\n- new: no matching story in the list.\n- repeat: matches a story and adds nothing the team would act on differently (same facts restated or re-reported by another outlet).\n- update: matches a story and adds material new facts (new incidents, numbers, decisions, dates, escalation or de-escalation).\nFor repeat and update, set story_id to the matching id exactly as written inside the braces. For update, set what_is_new to one sentence naming only the new facts, taken only from today's event text. For new, leave story_id and what_is_new empty. When unsure between repeat and update, choose update."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "f069334b-fab4-4492-9e32-da372a625740",
+      "name": "Compare With Last Week",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        2720,
+        800
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-sonnet-5-5"
+        },
+        "options": {}
+      },
+      "id": "9c86585d-082b-41c3-ba70-b0a166112e2a",
+      "name": "Anthropic Model (Story Check)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        2720,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"decisions\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"index\": {\"type\": \"integer\"},\n          \"status\": {\"type\": \"string\", \"enum\": [\"new\", \"repeat\", \"update\"]},\n          \"story_id\": {\"type\": \"string\"},\n          \"what_is_new\": {\"type\": \"string\"}\n        },\n        \"required\": [\"index\", \"status\"]\n      }\n    }\n  },\n  \"required\": [\"decisions\"]\n}"
+      },
+      "id": "61256d7a-7a89-4535-9035-cc32a1790e53",
+      "name": "Story Check Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        2848,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const events = $('Keep One Per Event').all().map(i => i.json);\nconst cutoff = Date.now() - 7 * 24 * 3600 * 1000;\nconst rows = $('Read Story Log').all().map(i => i.json)\n  .filter(r => r && r.story_id && new Date(r.seen_at).getTime() >= cutoff);\nconst known = {};\nconst urlToStory = {};\nfor (const r of rows) {\n  (known[r.story_id] = known[r.story_id] || []).push(r);\n  if (r.url) urlToStory[r.url] = r.story_id;\n}\n\nlet decisions = [];\ntry { decisions = $input.first().json.output.decisions || []; } catch (e) { decisions = []; }\nconst byIndex = {};\nfor (const d of decisions) {\n  const n = Number(d.index);\n  if (Number.isInteger(n) && !(n in byIndex)) byIndex[n] = d;\n}\n\nconst stamp = Date.now().toString(36);\nreturn events.map((e, i) => {\n  const d = byIndex[i] || {};\n  let status = ['new', 'repeat', 'update'].includes(d.status) ? d.status : 'new';\n  let storyId = d.story_id && known[d.story_id] ? d.story_id : null;\n  // Rule first: an article already logged this week is a repeat, whatever the model says\n  const seenUrl = [e.url, ...(e.also_reported || [])].find(u => urlToStory[u] && urlToStory[u] === urlToStory[e.url]) || (urlToStory[e.url] ? e.url : null);\n  if (seenUrl) { status = 'repeat'; storyId = urlToStory[seenUrl]; }\n  // Fail open: no decision or an unknown story id means the event is treated as new\n  if (status !== 'new' && !storyId) status = 'new';\n  const history = storyId ? known[storyId].sort((a, b) => new Date(a.seen_at) - new Date(b.seen_at)) : [];\n  return { json: {\n    ...e,\n    story_status: status,\n    story_id: storyId || `S-${stamp}-${i}`,\n    first_seen: history.length ? String(history[0].seen_at).slice(0, 10) : '',\n    previous_summary: history.slice(-4).map(r => String(r.seen_at).slice(0, 10) + ': ' + (r.what_is_new || r.summary)).join('\\n'),\n    what_is_new: status === 'update' ? String(d.what_is_new || '') : '',\n  } };\n});"
+      },
+      "id": "7792468f-0271-49a8-86bf-34c64dfd3cda",
+      "name": "Apply Story Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2944,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "story_log",
+          "mode": "id",
+          "value": "REPLACE_WITH_STORY_LOG_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "story_id",
+              "id": "story_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "seen_at",
+              "id": "seen_at",
+              "required": false,
+              "type": "dateTime"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "status",
+              "id": "status",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "title",
+              "id": "title",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "url",
+              "id": "url",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "summary",
+              "id": "summary",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "what_is_new",
+              "id": "what_is_new",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "topics",
+              "id": "topics",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "regions",
+              "id": "regions",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "regions": "={{ ($json.regions || []).join(',') }}",
+            "seen_at": "={{ $now.toISO() }}",
+            "status": "={{ $json.story_status }}",
+            "story_id": "={{ $json.story_id }}",
+            "summary": "={{ $json.one_line_summary }}",
+            "title": "={{ $json.title }}",
+            "topics": "={{ ($json.topics || []).join(',') }}",
+            "url": "={{ $json.url }}",
+            "what_is_new": "={{ $json.what_is_new }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "5eb5248f-0b8e-4983-ae41-3d399b1f1e56",
+      "name": "Log Story",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3168,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "notrepeat",
+              "leftValue": "={{ $json.story_status }}",
+              "operator": {
+                "operation": "notEquals",
+                "type": "string"
+              },
+              "rightValue": "repeat"
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          }
+        },
+        "options": {}
+      },
+      "id": "ffaa8d09-5b06-49c9-a0a9-b530f2e9952c",
+      "name": "Not a Repeat?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3168,
+        800
+      ]
+    }
+  ],
+  "connections": {
+    "Daily at 07:45": {
+      "main": [
+        [
+          {
+            "node": "RSS Source 1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Source 2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Source 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Feeds": {
+      "main": [
+        [
+          {
+            "node": "Normalise Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise Item": {
+      "main": [
+        [
+          {
+            "node": "Dedupe by URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedupe by URL": {
+      "main": [
+        [
+          {
+            "node": "Classify Signal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Signal": {
+      "main": [
+        [
+          {
+            "node": "Build Signal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Model (Classifier)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Classify Signal",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification Schema": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Classify Signal",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Signal": {
+      "main": [
+        [
+          {
+            "node": "Is Relevant?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read org_map": {
+      "main": [
+        [
+          {
+            "node": "Route to Teams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route to Teams": {
+      "main": [
+        [
+          {
+            "node": "Matched a Team?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Matched a Team?": {
+      "main": [
+        [
+          {
+            "node": "Write Team Brief",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Unrouted Signal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Team Brief": {
+      "main": [
+        [
+          {
+            "node": "Send for Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Model (Brief Writer)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Write Team Brief",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Relevant?": {
+      "main": [
+        [
+          {
+            "node": "Bundle Signals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bundle Signals": {
+      "main": [
+        [
+          {
+            "node": "Group Same Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Model (Grouping)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Group Same Events",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Grouping Schema": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Group Same Events",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group Same Events": {
+      "main": [
+        [
+          {
+            "node": "Keep One Per Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Source 1": {
+      "main": [
+        [
+          {
+            "node": "Merge Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Source 2": {
+      "main": [
+        [
+          {
+            "node": "Merge Feeds",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "RSS Source 3": {
+      "main": [
+        [
+          {
+            "node": "Merge Feeds",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Keep One Per Event": {
+      "main": [
+        [
+          {
+            "node": "Read Story Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Story Log": {
+      "main": [
+        [
+          {
+            "node": "Bundle With History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bundle With History": {
+      "main": [
+        [
+          {
+            "node": "Compare With Last Week",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Model (Story Check)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Compare With Last Week",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Story Check Schema": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Compare With Last Week",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare With Last Week": {
+      "main": [
+        [
+          {
+            "node": "Apply Story Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Story Check": {
+      "main": [
+        [
+          {
+            "node": "Log Story",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Not a Repeat?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Not a Repeat?": {
+      "main": [
+        [
+          {
+            "node": "Read org_map",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timezone": "Europe/Berlin"
+  },
+  "nodeGroups": [
+    {
+      "id": "6362cca2-86f9-49a9-ab9c-55db1090a889",
+      "name": "Collect fresh articles",
+      "nodeIds": [
+        "7981cb50-12e1-4813-9356-71ca11972cba",
+        "70707445-c129-4913-b1cb-abb1ecf92575",
+        "4b53c501-1195-48b5-8058-cb67167f6bb7"
+      ],
+      "description": "Combines all feed items into one shape and skips any URL handled in an earlier run"
+    },
+    {
+      "id": "1a970033-2cc2-4291-ac39-aea066b89a50",
+      "name": "Classify relevance",
+      "nodeIds": [
+        "3aa52342-a3ad-4553-bd59-a6626f0673c6",
+        "be188eed-c49c-44cb-8782-3f47f5ecf3cd",
+        "7764ca5f-174e-41df-bb20-dd848081bffd",
+        "8cb3a5b6-f6b0-4ec4-b50b-87a05183349a",
+        "f4fdd2a5-4b82-4620-a111-e0c2b8585c8b"
+      ],
+      "description": "Tags topics, regions and urgency from article text only; irrelevant items stop here"
+    },
+    {
+      "id": "ff63c192-6fa8-4a87-8d1e-e9deecc3a144",
+      "name": "Check against last 7 days",
+      "nodeIds": [
+        "6922125c-493b-4e64-a2c5-1cf02cf091f6",
+        "35abbd69-c832-4a82-9ab9-a082af7e5270",
+        "f069334b-fab4-4492-9e32-da372a625740",
+        "9c86585d-082b-41c3-ba70-b0a166112e2a",
+        "61256d7a-7a89-4535-9035-cc32a1790e53",
+        "7792468f-0271-49a8-86bf-34c64dfd3cda",
+        "5eb5248f-0b8e-4983-ae41-3d399b1f1e56",
+        "ffaa8d09-5b06-49c9-a0a9-b530f2e9952c"
+      ],
+      "description": "Compares each event with stories already covered this week; repeats are logged and held back, updates get an 'Update + Last week' brief"
+    },
+    {
+      "id": "72fce5e3-e7c4-4dab-b19e-7cabe860b88e",
+      "name": "Merge same-day reports",
+      "nodeIds": [
+        "c9190183-af49-42cd-9290-4177434e3019",
+        "8957baae-675c-425b-a4da-70d9ee4b5195",
+        "4a5ca6ff-4fae-4c16-b994-a8a9cbbc2b3c",
+        "659eb222-f712-4cbd-8495-4a1a62f86779",
+        "e792f00c-aaed-474d-a565-bc0bd45d2d9d"
+      ],
+      "description": "Groups reports of the same story within one run so each team gets one brief per event"
+    },
+    {
+      "id": "1d2c11ec-771c-48ce-a135-701b73a4fa95",
+      "name": "Route and draft briefs",
+      "nodeIds": [
+        "5b2a53c6-4691-46c3-8b58-6b0b7d81dc7e",
+        "dc218e9f-c4b0-4836-a142-9c4b5b659fdb",
+        "c6d959ff-063c-4567-ab62-361d84b43862",
+        "c730c788-4fa6-4573-9dd0-916fb6091d1e",
+        "07111ec3-7f08-4abc-bb1b-50eb2a43bc04",
+        "655f866c-7ef5-4504-acb8-72fc24cafa5e"
+      ],
+      "description": "Rule-based match against the org map, then a team brief; unmatched signals are logged and stop"
+    }
+  ],
+  "pinData": {}
+}

@@ -1,0 +1,56 @@
+{
+  "name": "AIA Signal Pipeline v0 – Error Alerts",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2df5d5db-ab16-493d-90df-5660b0e90fec",
+      "name": "On Pipeline Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "your-review-channel"
+        },
+        "text": "=:warning: *Workflow failed:* {{ $json.workflow.name }}\n*Node:* {{ $json.execution.lastNodeExecuted || \"unknown\" }}\n*Error:* {{ $json.execution.error ? $json.execution.error.message : \"n/a\" }}\n*Execution:* {{ $json.execution.url || $json.execution.id }}",
+        "otherOptions": {}
+      },
+      "id": "9bc86ac4-5bea-45c0-a37e-59b8a7f35e35",
+      "name": "Post Failure to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "On Pipeline Error": {
+      "main": [
+        [
+          {
+            "node": "Post Failure to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "pinData": {}
+}
