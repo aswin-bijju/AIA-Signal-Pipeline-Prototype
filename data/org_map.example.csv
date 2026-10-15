@@ -1,0 +1,4 @@
+team,owner,channel,topics,regions,min_urgency,exposure_note
+Operations,Team lead,your-review-channel,"shipping_disruption,customs_rules_of_origin,labour_strikes","UK,EU,IN,middle_east_gulf,red_sea_suez,global",2,"Delays and customs changes hit transit times, demurrage and claims"
+Commercial,Team lead,your-review-channel,"tariffs_trade,eu_india_relations,sanctions_export_controls,carbon_cbam","UK,EU,IN",2,Shipper demand moves when duties or trade deals change lane economics
+Finance,Team lead,your-review-channel,"fx_currency,tariffs_trade,compliance_regulation","UK,EU,IN",2,"Margins shift with GBP, EUR and INR rates and duty pass-through"
